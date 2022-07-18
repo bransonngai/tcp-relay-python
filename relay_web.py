@@ -23,7 +23,7 @@ async def index():
 
 
 uvicorn.run(app,
-            # host='0.0.0.0',
+            host='0.0.0.0',
             port=4000,
             log_level='info',  # set logger warning here if you want less
             )
