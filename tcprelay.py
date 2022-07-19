@@ -20,10 +20,18 @@ sleep_per_byte = 0.0001
 def forward(source, destination):
     source_addr = source.getpeername()
     while True:
-        data = source.recv(4096)
+        try:
+            data = source.recv(4096)
+        except ConnectionResetError as e:
+            break
+            print(str(e))
 
         if data:
-            destination.send(data)  # Broken pipe
+            try:
+                destination.send(data)  # Broken pipe
+            except Exception as e:
+                print(str(e))
+                pass
         else:
             print('disconnect', source_addr)
             destination.shutdown(socket.SHUT_WR)
