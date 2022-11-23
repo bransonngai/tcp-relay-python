@@ -68,17 +68,16 @@ def start_tcp():
     while True:
         (clientsocket, address) = serversocket.accept()
         # address is a tuple
-        ip = address[1]
+        ip = address[0]
         global udp_remote_host
         if not udp_remote_host:
             print('update udp_remote_host')
             udp_remote_host = ip
-        else:
-            print(f'remote ip is : {udp_remote_host}')
-        print('relay accepted', address)
+
+        # print('relay accepted', address)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect(connect_addr)
-        print('relay connected', sock.getpeername())
+        # print('relay connected', sock.getpeername())
         _thread.start_new_thread(forward, (clientsocket, sock))
         _thread.start_new_thread(forward, (sock, clientsocket))
 
@@ -94,7 +93,7 @@ def start_udp():
     # if len(sys.argv) != 2 or len(sys.argv[1].split(':')) != 3:
     #     fail('Usage: udp-relay.py localPort:remoteHost:remotePort')
 
-    localPort = udp_remote_host
+    localPort = udp_local_port
     remoteHost = udp_remote_host
     remotePort = udp_remote_port
 
@@ -153,3 +152,4 @@ if __name__ == '__main__':
 
     sleep(3)
     print('start UDP relay')
+    start_udp()
