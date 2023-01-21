@@ -16,7 +16,7 @@ import socket
 from threading import Thread
 from time import sleep
 
-
+global udp_remote_host
 listen_port = 3007
 connect_addr = ('localhost', 8080)  # PPRO8 api port
 sleep_per_byte = 0.0001
@@ -24,6 +24,8 @@ udp_remote_host = ''
 udp_remote_port = 3008
 udp_local_port = 8080
 udp_uri = f'local'
+
+tcp_came = False  # only first package arrived, we will know the new internal ip
 
 
 def start_tcp():
@@ -35,16 +37,16 @@ def start_tcp():
                 data = source.recv(4096)
             except ConnectionResetError as e:
                 break
-                print(str(e))
+                # print(str(e))
 
             if data:
                 try:
                     destination.send(data)  # Broken pipe
                 except Exception as e:
-                    print(str(e))
+                    # print(str(e))
                     pass
             else:
-                print('disconnect', source_addr)
+                # print('disconnect', source_addr)
                 destination.shutdown(socket.SHUT_WR)
                 break
 
@@ -68,7 +70,7 @@ def start_tcp():
     while True:
         (clientsocket, address) = serversocket.accept()
         # address is a tuple
-        ip = address[0]
+        ip = address[0]  #
         global udp_remote_host
         if not udp_remote_host:
             print('update udp_remote_host')
@@ -81,7 +83,21 @@ def start_tcp():
         _thread.start_new_thread(forward, (clientsocket, sock))
         _thread.start_new_thread(forward, (sock, clientsocket))
 
-def start_udp():
+
+def log(msg):
+    if debug:
+        print(msg)
+
+
+if __name__ == '__main__':
+    print('start TCP relay')
+    t = Thread(target=start_tcp)
+    t.start()
+
+    while not udp_remote_host:
+        sleep(1)
+
+    print('start UDP relay')
 
     # Whether or not to print the IP address and port of each packet received
     debug = True
@@ -118,38 +134,24 @@ def start_udp():
     while True:
 
         while True:
-            if udp_remote_host:
-                try:
-                    data, addr = s.recvfrom(32768)
-                except ConnectionResetError:
-                    if debug:
-                        print('Ubuntu reset ? no problem, udp dont give a shit, just try again')
-                        break
+            # if udp_remote_host:
+            try:
+                data, addr = s.recvfrom(32768)  # this one break the while , why
+                log(addr)
+            except ConnectionResetError:
+                log('Ubuntu reset ? no problem, udp dont give a shit, just try again')
+                break
 
-                if knownClient is None or addr != knownServer:
-                    if debug:
-                        print("")
-                    knownClient = addr
+            if knownClient is None or addr != knownServer:
+                log("")
+                knownClient = addr
 
-                if debug:
-                    print("Packet received from " + str(addr))
+            log("Packet received from " + str(addr))
 
-                if addr == knownClient:
-                    if debug:
-                        print("\tforwarding to " + str(knownServer))
+            if addr == knownClient:
+                log("\tforwarding to " + str(knownServer))
 
-                    s.sendto(data, knownServer)
-                else:
-                    if debug:
-                        print("\tforwarding to " + str(knownClient))
-                    s.sendto(data, knownClient)
-
-
-if __name__ == '__main__':
-    print('start TCP relay')
-    t = Thread(target=start_tcp)
-    t.start()
-
-    sleep(3)
-    print('start UDP relay')
-    start_udp()
+                s.sendto(data, knownServer)
+            else:
+                log("\tforwarding to " + str(knownClient))
+                s.sendto(data, knownClient)
